@@ -1,4 +1,4 @@
 package dai.smtp.client;
 
-public class Client {
+public class EmailGroup {
 }

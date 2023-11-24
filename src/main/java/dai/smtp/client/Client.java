@@ -19,17 +19,15 @@ public class Client {
         }
 
         // stockage des args
-        File victimsList = new File(args[0]);
+        File emailsList = new File(args[0]);
         File messagesList = new File(args[1]);
         int numberGroups = Integer.parseInt(args[2]);
-
-        // FIXME : besoin de convertir les fichiers en tableau de strings ?
 
         // traitement du nombre de groupe souhaite
         for (int n = 0; n < numberGroups; ++n) {
             // TODO : controle du contenu des args dans chaque classe
             // formation du groupe
-            EmailGroup group = new EmailGroup(victimsList);
+            EmailGroup group = new EmailGroup(emailsList);
             // attribution du message
             EmailContent content = new EmailContent(messagesList);
             // envoi du message

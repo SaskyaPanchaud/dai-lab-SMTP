@@ -7,7 +7,8 @@ import java.util.Random;
 
 public class EmailContent {
     HashMap<String, String> messages = new HashMap<>();
-    public EmailContent(HashMap<String, String> messagesList) {
+    public EmailContent(File messagesList) {
+        // TODO : controler le contenu des args dans chaque classe
         int messageChoosenNumber = Random();
         // TODO : selectionner un message, attention a l'encodage et renvoyer ???
     }

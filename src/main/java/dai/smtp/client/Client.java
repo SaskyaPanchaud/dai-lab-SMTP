@@ -1,6 +1,8 @@
 package dai.smtp.client;
 
 import java.io.*;
+import java.util.ArrayList;
+import java.util.HashMap;
 
 public class Client {
     public static void main(String[] args) {
@@ -25,13 +27,17 @@ public class Client {
             throw new RuntimeException("Give filepaths valid.");
         }
 
+        EmailGroup group = new EmailGroup(emailsList);
+        EmailContent content = new EmailContent(messagesList);
+        EmailSend sending = new EmailSend();
+
         for (int n = 0; n < numberGroups; ++n) {
-            // formation du groupe
-            EmailGroup group = new EmailGroup(emailsList);
-            // attribution du message
-            EmailContent content = new EmailContent(messagesList);
-            // envoi du message
-            new EmailSend(group, content);
+            ArrayList<String> adresses = group.formGroup();
+            HashMap<String, String> message = content.chooseMessage();
+            boolean send = sending.send(adresses, message);
+            if (!send) {
+                throw new RuntimeException("Error while sending email...");
+            }
         }
     }
 }

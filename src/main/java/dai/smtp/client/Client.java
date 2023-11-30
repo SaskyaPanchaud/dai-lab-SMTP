@@ -3,7 +3,7 @@ package dai.smtp.client;
 import java.io.*;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
-import java.util.Arrays;
+import java.util.*;
 import java.util.Random;
 import java.time.*;
 import java.time.format.DateTimeFormatter;
@@ -26,11 +26,15 @@ public class Client {
             throw new RuntimeException("Required args: <nGroups> <addresses_list_path> <messages_list_path>");
         }
 
-        var addresses = readAddresses(args[1]);
-        var messages = readMessages(args[2]);
+        var addresses = Address.readJSONFile(args[1]);
+        var messages = Message.readJSONFile(args[2]);
 
         int nGroups = Integer.parseInt(args[0]);
-        var groups = createGroups(nGroups, addresses, messages);
+        if (nGroups <= 0)
+        {
+            throw new RuntimeException("Invalid number of groups %d".formatted(nGroups));
+        }
+        var groups = createGroups(nGroups, (Address[]) addresses, messages);
 
         Client client = new Client();
         for (var group : groups)
@@ -57,78 +61,24 @@ public class Client {
                 }
 
                 sendSMTPMessage(SMTPHello(SERVER_ADDRESS), out, in);
-                sendSMTPMessage(SMTPSender(group.getSender()), out, in);
+                sendSMTPMessage(SMTPSender(group.getSender().toString()), out, in);
                 for (var recipient : group.getVictims())
                 {
-                    sendSMTPMessage(SMTPRecipient(recipient), out, in);
+                    sendSMTPMessage(SMTPRecipient(recipient.toString()), out, in);
                 }
                 sendSMTPMessage(SMTPData(), out, in);
                 sendSMTPMessage(group.toSMTPData(), out, in);
 
                 // This creates a "command not recognized" error on MailDev.
                 // sendSMTPMessage(SMTPQuit(), out, in);
+
+                System.out.println("Successfully sent emails to group\n");
             }
             catch (IOException e)
             {
                 System.out.println("Client IOException: %s".formatted(e.getMessage()));
                 return;
             }
-    }
-
-    private static JSONArray readJSONArray(String path)
-    {
-        try(var reader = new BufferedReader(new InputStreamReader(new FileInputStream(path)));)
-        {
-            var file = new StringBuilder();
-            String line;
-            while ((line = reader.readLine()) != null)
-            {
-                file.append(line + "\n");
-            }
-            return new JSONArray(file.toString());
-        }
-        catch (IOException e)
-        {
-            throw new RuntimeException("Error while reading JSON file " + path);
-        }
-    }
-
-    // TODO Reafactor this code
-    private static String[] readAddresses(String path)
-    {
-        var json = readJSONArray(path);
-        try
-        {
-            String[] result = new String[json.length()];
-            for (int i = 0; i < json.length(); ++i)
-            {
-                result[i] = json.getJSONObject(i).getString("address");
-            }
-            return result;
-        }
-        catch (JSONException e)
-        {
-            throw new RuntimeException(String.format("Malformed JSON file %s. Format: [<address1 (sender)>, <victim1>, <victim2>, ...]", path));
-        }
-    }
-
-    private static Message[] readMessages(String path)
-    {
-        var json = readJSONArray(path);
-        try
-        {
-            var result = new Message[json.length()];
-            for (int i = 0; i < json.length(); ++i)
-            {
-                var object = json.getJSONObject(i);
-                result[i] = new Message(object.getString("subject"), object.getString("body"));
-            }
-            return result;
-        }
-        catch (JSONException e)
-        {
-            throw new RuntimeException(String.format("Malformed JSON file %s. Format: [{\"subject\": <subject>, \"body\": <body>}, ...]", path));
-        }
     }
 
     private static Object[] getRandomElements(Object[] elements, int minAmount, int maxAmount)
@@ -156,10 +106,10 @@ public class Client {
         return selectedElements;
     }
 
-    static String[] getRandomAddresses(String[] addresses)
+    static Address[] getRandomAddresses(Address[] addresses)
     {
         var elements = getRandomElements(addresses, MIN_GROUP_ADDRESSES, MAX_GROUP_ADDRESSES);
-        return Arrays.copyOf(elements, elements.length, String[].class);
+        return Arrays.copyOf(elements, elements.length, Address[].class);
     }
 
     static Message getRandomMessage(Message[] messages)
@@ -168,7 +118,7 @@ public class Client {
     }
 
 
-    static Group[] createGroups(int nGroups, String[] addresses, Message[] messages)
+    static Group[] createGroups(int nGroups, Address[] addresses, Message[] messages)
     {
         var groups = new Group[nGroups];
         for (int i = 0; i < nGroups; ++i)
@@ -183,17 +133,17 @@ public class Client {
 
     private static String SMTPHello(String server)
     {
-        return String.format("HELO %s", server);
+        return "HELO %s".formatted(server);
     }
 
     private static String SMTPSender(String sender)
     {
-        return String.format("MAIL FROM:<%s>", sender);
+        return "MAIL FROM:<%s>".formatted(sender);
     }
 
     private static String SMTPRecipient(String recipient)
     {
-        return String.format("RCPT TO:<%s>", recipient);
+        return "RCPT TO:<%s>".formatted(recipient);
     }
 
 
@@ -222,40 +172,87 @@ public class Client {
             String answer = in.readLine();
             if (!(answer.startsWith("2") || answer.startsWith("3")))
             {
-                throw new RuntimeException(String.format("SMTP error: %s", answer));
+                throw new RuntimeException("SMTP error: %s".formatted(answer));
             }
         }
         catch (IOException e)
         {
-            throw new RuntimeException(String.format("IO error: Could not send message %s"));
+            throw new RuntimeException("IO error: Could not send message %s".formatted(e.getMessage()));
         }
     }
 }
 
-interface JSONReader
+class JSONReader
 {
-    Object read(JSONObject json);
-}
+    static <T extends JSONReadable> List<T> readJSON(String path, Class<T> clazz)
+    {   
+        var json = readJSONFile(path);
+        try
+        {
+            var result = new ArrayList<T>();
 
-interface JSONReadable
-{
-    public static String getExpectedJSONFormat()
-    {
-        return "";
+            for (int i = 0; i < json.length(); ++i)
+            {
+                var object = clazz.getDeclaredConstructor().newInstance();
+                object.fromJSON(json.getJSONObject(i));
+                result.add(object);
+            }
+            return result;
+        }
+        catch (JSONException e)
+        {
+            throw new RuntimeException("Malformed JSON file %s. Format: %s".formatted(T.getExpectedJSONFormat()));
+        }
+        catch (Exception e)
+        {
+            System.out.println(e.getMessage());
+            throw new RuntimeException("Error creating a json object from %s \n%s".formatted(path, e.getMessage()));
+        }
     }
 
-    static JSONReader getReader()
+    private static JSONArray readJSONFile(String path)
     {
-        return null;
+        try(var reader = new BufferedReader(new InputStreamReader(new FileInputStream(path)));)
+        {
+            var file = new StringBuilder();
+            String line;
+            while ((line = reader.readLine()) != null)
+            {
+                file.append(line + "\n");
+            }
+            return new JSONArray(file.toString());
+        }
+        catch (IOException e)
+        {
+            throw new RuntimeException("Error while reading JSON file " + path);
+        }
     }
 }
 
-class Address implements JSONReadable
+abstract class JSONReadable
+{
+    abstract void fromJSON(JSONObject json);
+
+    static String getExpectedJSONFormat()
+    {
+        return "No format specified";
+    }
+}
+
+class Address extends JSONReadable
 {
     private String address;
-    Address(String anAddress)
+
+    Address()
+    {}
+
+    void fromJSON(JSONObject json)
     {
-        address = anAddress;
+        address = json.getString("address");
+        if (!address.contains("@") || !address.contains("."))
+        {
+            throw new RuntimeException("Invalid email address: %s".formatted(address));
+        }
     }
 
     public String toString()
@@ -263,63 +260,57 @@ class Address implements JSONReadable
         return address;
     }
 
-    static JSONReader getReader()
-    {
-        return (json) -> json.getString("address");
-    }
-
-    public static String getExpectedJSONFormat()
+    static String getExpectedJSONFormat()
     {
         return "[{\"address\": <address1 (sender)>}, {\"address\": <victim1>}, {\"address\": <victim2>}, ...]\"";
     }
+
+    static Address[] readJSONFile(String path)
+    {
+        return JSONReader.readJSON(path, Address.class).toArray(new Address[0]);
+    }
 }
 
-class Message implements JSONReadable
+class Message extends JSONReadable
 {
     private String subject;
     private String body;
 
     private static final String END_OF_MESSAGE = Client.NEWLINE + "." + Client.NEWLINE;
-    
-    Message(String aSubject, String aBody)
+
+    Message()
     {
-        subject = aSubject;
-        body = aBody;
     }
 
-    static JSONReader getReader()
+    void fromJSON(JSONObject json)
     {
-        return (json) -> new Message(json.getString("subject"), json.getString("body"));
+        subject = json.getString("subject");
+        body = json.getString("body");
     }
 
-    public static String getExpectedJSONFormat()
+    static String getExpectedJSONFormat()
     {
         return "[{\"subject\": <subject>, \"body\": <body>}, ...]";
     }
 
-    String getSubject()
+    static Message[] readJSONFile(String path)
     {
-        return subject;
-    }
-
-    String getBody()
-    {
-        return body;
+        return JSONReader.readJSON(path, Message.class).toArray(new Message[0]);
     }
 
     private String getSMTPDate()
     {
-        return String.format("Date: %s", ZonedDateTime.now().format(DateTimeFormatter.RFC_1123_DATE_TIME));
+        return "Date: %s".formatted(ZonedDateTime.now().format(DateTimeFormatter.RFC_1123_DATE_TIME));
     }
 
     private String getSMTPSubject()
     {
-        return String.format("Subject: %s", subject);
+        return "Subject: %s".formatted(subject);
     }
 
     private String getSMTPBody()
     {
-        return body.replace("\n.\n", "\n..\n");
+        return body.replace(END_OF_MESSAGE, "%s..%s".formatted(Client.NEWLINE, Client.NEWLINE));
     }
 
     String toSMTPMessage()
@@ -335,10 +326,10 @@ class Message implements JSONReadable
 
 class Group 
 {
-    String[] addresses;
+    Address[] addresses;
     Message message;
 
-    Group(String[] anAddresses, Message aMessage)
+    Group(Address[] anAddresses, Message aMessage)
     {
         if (anAddresses.length < 2 || anAddresses.length > 5)
         {
@@ -348,29 +339,34 @@ class Group
         message = aMessage;
     }
 
-    public String getSender()
+    public Address getSender()
     {
         return addresses[0];
     }
 
-    public String[] getVictims()
+    public Address[] getVictims()
     {
-        return Arrays.copyOfRange(addresses, 1, addresses.length);
+        var result = new Address[addresses.length - 1];
+        for (int i = 0; i < result.length; ++i)
+        {
+            result[i] = addresses[i + 1];
+        }
+        return result;
     }
-
-    public Message getMessage()
-    {
-        return message;
-    }
-
+    
     private String getSMTPSender()
     {
-        return String.format("From: %s", getSender());
+        return "From: %s".formatted(getSender());
     }
 
     private String getSMTPRecipients()
     {
-        return String.format("To: %s", String.join(", ", getVictims()));
+        StringBuilder result = new StringBuilder("To: ");
+        for (var address : getVictims())
+        {
+            result.append(address + ", ");
+        }
+        return result.toString();
     }
 
     String toSMTPData()
@@ -378,7 +374,7 @@ class Group
         var result = new StringBuilder();
         result.append(getSMTPSender() + Client.NEWLINE);
         result.append(getSMTPRecipients() + Client.NEWLINE);
-        result.append(getMessage().toSMTPMessage() + Client.NEWLINE);
+        result.append(message.toSMTPMessage() + Client.NEWLINE);
 
         return result.toString();
     }

@@ -24,7 +24,10 @@ public class EmailContent {
             while ((line = in.readLine()) != null) {
                 var header = line;
                 StringBuilder body = new StringBuilder();
-                while ((line = in.readLine()) != "FIN MESSAGE") {
+                while ((line = in.readLine()) != null) {
+                    if (line.equals("FIN MESSAGE")) {
+                        break;
+                    }
                     body.append(line);
                 }
                 messages.put(header, body.toString());

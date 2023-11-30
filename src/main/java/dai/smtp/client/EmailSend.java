@@ -10,6 +10,17 @@ public class EmailSend {
     static final String SERVER_ADDRESS = "localhost";
     static final int SERVER_PORT = 1025;
 
+    private String arrayListToString(ArrayList<String> arrayList) {
+        StringBuilder s = new StringBuilder();
+        for(int i = 0; i < arrayList.size(); ++i) {
+            if (i != 0) {
+                s.append(", ");
+            }
+            s.append(arrayList.get(i));
+        }
+        return s.toString();
+    }
+
     public boolean send(ArrayList<String> adresses, HashMap<String, String> message) {
         // definition du sender et des receivers
         String sender = adresses.get(0);
@@ -19,7 +30,10 @@ public class EmailSend {
         }
 
         // debut conversation avec serveur
-        try (Socket socket = new Socket(SERVER_ADDRESS, SERVER_PORT); var in = new BufferedReader(new InputStreamReader(socket.getInputStream(), StandardCharsets.UTF_8)); var out = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream(), StandardCharsets.UTF_8))) {
+        try (Socket socket = new Socket(SERVER_ADDRESS, SERVER_PORT);
+            var in = new BufferedReader(new InputStreamReader(socket.getInputStream(), StandardCharsets.UTF_8));
+            var out = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream(), StandardCharsets.UTF_8))) {
+
             // lecture premier message
             String firstResponse = in.readLine();
             if (firstResponse.startsWith("2")) {
@@ -28,14 +42,13 @@ public class EmailSend {
                 throw new RuntimeException("Could't connect to SMTP server. Response: " + firstResponse);
             }
             // envoi premier message
-            out.write("EHLO" + SERVER_ADDRESS + "\n");
+            out.write("EHLO " + SERVER_ADDRESS + "\n");
             out.flush();
             // lecture extensions
             String extension;
             while((extension = in.readLine()) != null) {
-                if (extension.substring(0,4) != "250 ") {
-                    System.out.println(extension);
-                } else {
+                System.out.println(extension);
+                if(extension.substring(0, 4).equals("250 ")) {
                     break;
                 }
             }
@@ -50,39 +63,44 @@ public class EmailSend {
             }
 
             // envoi "rcpt to" + lecture reponse
-            // FIXME : comment mettre plusieurs receivers ?, tester avec ncat
-            out.write("rcpt to: <" + receivers + ">\n");
-            out.flush();
-            String resultReceivers = in.readLine();
-            if (resultReceivers.startsWith("2")) {
-                System.out.println("Receivers OK");
-            } else {
-                throw new RuntimeException("Receivers KO : " + resultReceivers);
+            for (var r : receivers) {
+                out.write("rcpt to: <" + r + ">\n");
+                out.flush();
+                String resultReceivers = in.readLine();
+                if (resultReceivers.startsWith("2")) {
+                    System.out.println("Receivers OK");
+                } else {
+                    throw new RuntimeException("Receivers KO : " + resultReceivers);
+                }
             }
 
             // envoi "data" + lecture reponse
             out.write("data\n");
-            System.out.println(in.readLine());
+            out.flush();
+            String resultData = in.readLine();
+            System.out.println(resultData);
 
             // envoi contenu email
             out.write("From: <" + sender + ">\n");
-            // FIXME : comment envoyer la liste ?, a tester
-            out.write("To: <" + receivers + ">\n");
+            out.flush();
+            out.write("To: <" + arrayListToString(receivers) + ">\n");
+            out.flush();
             out.write("Date: " + java.time.LocalDate.now() + "\n");
-            // TODO : s'occuper de l'encodage du header
+            out.flush();
             out.write("Subject: " + message.keySet() + "\n");
+            out.flush();
             out.write("\n");
+            out.flush();
             out.write(message.values() + "\n");
-            out.write("\n.\n");
             out.flush();
-            // TODO des que tests ok
-            // lire reponse
-
-
-            // envoi fin
-            out.write("quit" + "\n");
+            out.write("\r\n.\r\n");
             out.flush();
+
             // lire reponse
+            System.out.println(in.readLine());
+
+            //out.write("quit" + "\n");
+            //out.flush();
 
         } catch (IOException e) {
             System.out.println("EmailSend: exception while using socket: " + e);

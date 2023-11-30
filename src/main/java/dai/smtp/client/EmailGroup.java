@@ -6,7 +6,7 @@ import java.util.ArrayList;
 
 public class EmailGroup {
 
-    static int MIN_IN_GROUP = 1;
+    static int MIN_IN_GROUP = 2;
     static int MAX_IN_GROUP = 5;
     static int MIN_INDEX = 0;
     static int MAX_INDEX;
@@ -16,6 +16,7 @@ public class EmailGroup {
     public EmailGroup(File emailsList) {
         emails = fileToString(emailsList);
         NB_EMAILS = emails.size();
+        MAX_IN_GROUP = NB_EMAILS >= 5 ? 5 : NB_EMAILS - 1;
         MAX_INDEX = NB_EMAILS - 1;
     }
 

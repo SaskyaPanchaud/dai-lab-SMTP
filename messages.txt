@@ -1,0 +1,12 @@
+Objet1
+Premier message. Test encodage : é~+à
+FIN MESSAGE
+Objet2 ävéc %encodage{
+Test passé ?
+FIN MESSAGE
+Objet3
+Rien de spécial...
+FIN MESSAGE
+Objet4
+.\r\n.
+FIN MESSAGE

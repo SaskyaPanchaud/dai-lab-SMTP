@@ -29,7 +29,7 @@ public class Client {
 
         EmailGroup group = new EmailGroup(emailsList);
         EmailContent content = new EmailContent(messagesList);
-        EmailSend sending = new EmailSend(  );
+        EmailSend sending = new EmailSend();
 
         for (int n = 0; n < numberGroups; ++n) {
             ArrayList<String> adresses = group.formGroup();

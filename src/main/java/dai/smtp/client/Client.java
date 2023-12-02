@@ -8,6 +8,9 @@ public class Client {
     static final private int PORT = 1025;
     static final private String SERVER_ADDRESS = "localhost";
 
+    static final int MIN_GROUP_ADDRESSES = 2;
+    static final int MAX_GROUP_ADDRESSES = 5;
+
     public static void main(String[] args) {
         if (args.length != 3) {
             throw new RuntimeException("Required args: <nGroups> <addresses_list_path> <messages_list_path>");
@@ -15,6 +18,13 @@ public class Client {
 
         var addresses = Address.readJSONFile(args[1]);
         var messages = Message.readJSONFile(args[2]);
+
+        int nGroups = Integer.parseInt(args[0]);
+        if (nGroups <= 0) {
+            throw new RuntimeException("Invalid number of groups %d".formatted(nGroups));
+        }
+
+        var groups = Group.createGroups(nGroups, addresses, messages);
 
         Client client = new Client();
         client.run();

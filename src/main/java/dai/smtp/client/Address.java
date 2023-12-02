@@ -17,4 +17,8 @@ public class Address extends JSONReadable {
     static String getExpectedJSONFormat() {
         return "[{\"address\": <address1>}, {\"address\": <address2>}, ...]\"";
     }
+
+    static Address[] readJSONFile(String path) {
+        return JSONReader.readJSON(path, Address.class).toArray(new Address[0]);
+    }
 }

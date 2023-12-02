@@ -16,4 +16,8 @@ public class Message extends JSONReadable {
     static String getExpectedJSONFormat() {
         return "[{\"subject\": <subject>, \"body\": <body>}, ...]";
     }
+
+    static Message[] readJSONFile(String path) {
+        return JSONReader.readJSON(path, Message.class).toArray(new Message[0]);
+    }
 }

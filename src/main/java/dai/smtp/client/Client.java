@@ -9,6 +9,13 @@ public class Client {
     static final private String SERVER_ADDRESS = "localhost";
 
     public static void main(String[] args) {
+        if (args.length != 3) {
+            throw new RuntimeException("Required args: <nGroups> <addresses_list_path> <messages_list_path>");
+        }
+
+        var addresses = Address.readJSONFile(args[1]);
+        var messages = Message.readJSONFile(args[2]);
+
         Client client = new Client();
         client.run();
     }

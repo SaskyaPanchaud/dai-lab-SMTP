@@ -18,12 +18,34 @@ public class Group {
         return addresses[0];
     }
 
+    public String getSenderStr() {
+        return getSender().toString();
+    }
+
     public Address[] getVictims() {
         var result = new Address[addresses.length - 1];
         for (int i = 0; i < result.length; ++i) {
             result[i] = addresses[i + 1];
         }
         return result;
+    }
+
+    public String[] getVictimsStr() {
+        var victims = getVictims();
+        var result = new String[victims.length];
+        for (int i = 0; i < victims.length; ++i) {
+            result[i] = victims[i].toString();
+        }
+
+        return result;
+    }
+
+    public String getSubject() {
+        return message.getSubject();
+    }
+
+    public String getBody() {
+        return message.getBody();
     }
 
     static Group[] createGroups(int nGroups, Address[] addresses, Message[] messages) {

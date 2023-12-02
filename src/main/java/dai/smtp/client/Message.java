@@ -8,6 +8,14 @@ public class Message extends JSONReadable {
 
     Message() {}
 
+    String getSubject() {
+        return subject;
+    }
+
+    String getBody() {
+        return body;
+    }
+
     void fromJSON(JSONObject json) {
         subject = json.getString("subject");
         body = json.getString("body");

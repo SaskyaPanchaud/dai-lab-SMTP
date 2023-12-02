@@ -7,6 +7,10 @@ public class Address extends JSONReadable {
 
     Address() {}
 
+    public String toString() {
+        return address;
+    }
+
     void fromJSON(JSONObject json) {
         address = json.getString("address");
         if (!address.contains("@") || !address.contains(".")) {

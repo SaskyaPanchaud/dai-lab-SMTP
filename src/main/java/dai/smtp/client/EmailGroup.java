@@ -6,11 +6,11 @@ import java.util.ArrayList;
 
 public class EmailGroup {
 
-    static int MIN_IN_GROUP = 2;
-    static int MAX_IN_GROUP = 5;
-    static int MIN_INDEX = 0;
-    static int MAX_INDEX;
-    static ArrayList<String> emails = new ArrayList<>();
+    static final private int MIN_IN_GROUP = 2;
+    static private int MAX_IN_GROUP = 5;
+    static final private int MIN_INDEX = 0;
+    static private int MAX_INDEX;
+    static private ArrayList<String> emails = new ArrayList<>();
     static int NB_EMAILS;
 
     public EmailGroup(File emailsList) {

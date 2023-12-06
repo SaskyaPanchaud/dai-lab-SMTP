@@ -52,6 +52,7 @@ public class EmailSend {
                     break;
                 }
             }
+
             // envoi "mail from" + lecture reponse
             out.write("mail from: <" + sender + ">\n");
             out.flush();
@@ -106,9 +107,5 @@ public class EmailSend {
             System.out.println("EmailSend: exception while using socket: " + e);
         }
         return true;
-    }
-
-    private String sendToServer(String smtpKeyword, String content) {
-        return smtpKeyword + content + "\n";
     }
 }
